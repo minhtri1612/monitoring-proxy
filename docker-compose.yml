@@ -1,0 +1,74 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./demo/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  proxy:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - prometheus
+
+  demo-api-production:
+    build: ./demo/api
+    environment:
+      ENVIRONMENT: production
+    ports:
+      - "8081:8080"
+
+  demo-api-staging:
+    build: ./demo/api
+    environment:
+      ENVIRONMENT: staging
+    ports:
+      - "8082:8080"
+
+  dashboard:
+    build: ./demo/dashboard
+    ports:
+      - "3001:3001"
+    depends_on:
+      - proxy
+
+  node-exporter-production:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+
+  node-exporter-staging:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./demo/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - proxy
+
+  k6:
+    image: grafana/k6:0.54.0
+    profiles: [load]
+    volumes:
+      - ./demo/k6:/scripts:ro
+    command: run /scripts/load-test.js
+    depends_on:
+      - demo-api-production
+      - demo-api-staging

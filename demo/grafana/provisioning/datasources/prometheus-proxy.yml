@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus via Proxy (production)
+    version: 1
+    type: prometheus
+    access: proxy
+    url: http://proxy:8000
+    isDefault: true
+    jsonData:
+      httpHeaderName1: Authorization
+      httpHeaderName2: PROMETHEUS-API-KEY
+    secureJsonData:
+      httpHeaderValue1: Basic demo-proxy-auth
+      httpHeaderValue2: demo-production-key
